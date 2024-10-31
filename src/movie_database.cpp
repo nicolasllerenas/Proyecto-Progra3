@@ -1,20 +1,33 @@
 #include "movie_database.h"
 #include <fstream>
 #include <sstream>
-#include <future>
-#include <queue>
-#include <mutex>
 #include <iostream>
 #include <condition_variable>
+#include <thread>
+#include <vector>
 
 // Constructor
-MovieDatabase::MovieDatabase() 
+MovieDatabase::MovieDatabase()
     : titleTrie(std::make_shared<Trie>()),
       plotTrie(std::make_shared<Trie>()),
-      tagTrie(std::make_shared<Trie>()) {}
+      tagTrie(std::make_shared<Trie>()),
+      done(false) {} // Inicializa done en false
 
-// Procesa una línea del archivo CSV, extrae los campos imdb_id, title, plot y tags, 
-// crea un objeto Movie y lo inserta en las estructuras de datos correspondientes.
+// Destructor para asegurarse de que los hilos se detienen limpiamente
+MovieDatabase::~MovieDatabase() {
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        done = true;
+    }
+    queueCondVar.notify_all(); // Notificar a todos los hilos de trabajo para que terminen
+    for (auto& worker : workers) {
+        if (worker.joinable()) {
+            worker.join();
+        }
+    }
+}
+
+// Procesa una línea del archivo CSV y crea un objeto Movie
 void MovieDatabase::processLine(const std::string& line) {
     std::stringstream ss(line);
     std::string imdb_id, title, plot, tags;
@@ -23,8 +36,8 @@ void MovieDatabase::processLine(const std::string& line) {
     std::getline(ss, title, ',');
     std::getline(ss, plot, ',');
     std::getline(ss, tags, ',');
-    
-    // Process tags
+
+    // Procesar etiquetas
     std::vector<std::string> tagList;
     std::stringstream tagStream(tags);
     std::string tag;
@@ -34,6 +47,7 @@ void MovieDatabase::processLine(const std::string& line) {
     
     auto movie = std::make_shared<Movie>(imdb_id, title, plot, tagList);
     
+    // Bloqueo para inserciones en estructuras de datos compartidas
     std::lock_guard<std::mutex> lock(mtx);
     movies.push_back(movie);
     titleTrie->insert(title, movie);
@@ -43,6 +57,30 @@ void MovieDatabase::processLine(const std::string& line) {
     }
 }
 
+// Función que ejecutará cada hilo de trabajo para procesar líneas de la cola
+void MovieDatabase::workerThread() {
+    while (true) {
+        std::string line;
+        
+        // Bloqueo para acceder a la cola
+        {
+            std::unique_lock<std::mutex> lock(queueMutex);
+            queueCondVar.wait(lock, [this] { return !taskQueue.empty() || done; });
+            
+            if (done && taskQueue.empty()) {
+                return; // Salir si no hay más tareas y la carga de datos ha terminado
+            }
+            
+            line = taskQueue.front();
+            taskQueue.pop();
+        }
+
+        // Procesa la línea fuera del bloqueo de la cola
+        processLine(line);
+    }
+}
+
+// Cargar datos desde un archivo CSV y lanzar hilos de trabajo
 bool MovieDatabase::loadData(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -51,39 +89,42 @@ bool MovieDatabase::loadData(const std::string& filename) {
     }
     
     std::string line;
-    std::getline(file, line); // Skip header
-    
-    std::vector<std::future<void>> futures;
-    while (std::getline(file, line)) {
-        if (futures.size() >= std::thread::hardware_concurrency()) {
-            // Espera a que se complete al menos un hilo antes de agregar otro
-            futures.erase(std::remove_if(futures.begin(), futures.end(),
-                [](std::future<void>& f) { return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }),
-                futures.end());
-        }
-        // Lanzamos un nuevo hilo usando async en lugar de un thread manual
-        futures.push_back(std::async(std::launch::async, &MovieDatabase::processLine, this, line));
+    std::getline(file, line); // Omite la cabecera
+
+    // Lanzar un grupo fijo de hilos de trabajo
+    const unsigned int numThreads = std::thread::hardware_concurrency();
+    for (unsigned int i = 0; i < numThreads; ++i) {
+        workers.emplace_back(&MovieDatabase::workerThread, this);
     }
 
-    // Espera a que todos los hilos terminen
-    for (auto& f : futures) {
-        f.get();
+    // Leer el archivo y añadir cada línea a la cola de tareas
+    while (std::getline(file, line)) {
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            taskQueue.push(line);
+        }
+        queueCondVar.notify_one(); // Notificar a un hilo para que procese la línea
     }
-    
+
+    // Indicar que se ha terminado de leer el archivo
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        done = true;
+    }
+    queueCondVar.notify_all(); // Notificar a todos los hilos de trabajo
+
     return true;
 }
 
-// Busca películas por título usando el Trie de títulos
+// Métodos de búsqueda usando los tries
 std::vector<std::shared_ptr<Movie>> MovieDatabase::searchByTitle(const std::string& query) {
     return titleTrie->search(query);
 }
 
-// Busca películas por sinopsis usando el Trie de sinopsis
 std::vector<std::shared_ptr<Movie>> MovieDatabase::searchByPlot(const std::string& query) {
     return plotTrie->search(query);
 }
 
-// Busca películas por etiquetas usando el Trie de etiquetas
 std::vector<std::shared_ptr<Movie>> MovieDatabase::searchByTag(const std::string& tag) {
     return tagTrie->search(tag);
 }

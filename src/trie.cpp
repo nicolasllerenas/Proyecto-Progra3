@@ -1,4 +1,3 @@
-// trie.cpp
 #include "trie.h"
 #include <algorithm>
 
@@ -17,7 +16,11 @@ void Trie::insert(const std::string& word, std::shared_ptr<Movie> movie) {
             current->children[c] = std::make_shared<TrieNode>();
         }
         current = current->children[c];
-        current->movies.push_back(movie);
+        
+        // Verificar si ya existe la película en este nodo antes de añadirla
+        if (std::find(current->movies.begin(), current->movies.end(), movie) == current->movies.end()) {
+            current->movies.push_back(movie);
+        }
     }
     current->isEndOfWord = true;
 }
@@ -30,10 +33,21 @@ std::vector<std::shared_ptr<Movie>> Trie::search(const std::string& word) {
     
     for (char c : lowercaseWord) {
         if (current->children.find(c) == current->children.end()) {
-            return {};
+            return {}; // Retorna vacío si el término de búsqueda no se encuentra
         }
         current = current->children[c];
     }
+
+    // Calcular y ordenar las películas según el importance_score
+    std::vector<std::shared_ptr<Movie>> result = current->movies;
+    for (auto& movie : result) {
+        movie->calculateImportance(word); // Calcula la importancia basada en el término de búsqueda
+    }
     
-    return current->movies;
+    // Ordenar el resultado por importance_score en orden descendente
+    std::sort(result.begin(), result.end(), [](const std::shared_ptr<Movie>& a, const std::shared_ptr<Movie>& b) {
+        return a->getImportanceScore() > b->getImportanceScore();
+    });
+
+    return result;
 }
