@@ -1,3 +1,4 @@
+//main.cpp
 #include <iostream>
 #include <memory>
 #include "movie_database.h"
@@ -35,16 +36,22 @@ int main() {
         std::cin >> password;
 
         if (option == 1) {  // Login
-            if (auth.loginUser(username, password)) {
-                currentUser = std::make_shared<User>(username, password);
+            if (auth.verifyCredentials(username, password)) {
+            currentUser = auth.loadUserData(username, password);
+            if (currentUser) {
                 std::cout << "Login successful.\n";
-            } else {
-                std::cout << "Invalid credentials.\n";
             }
-        } else if (option == 2) {  // Register
+        } else {
+            std::cout << "Invalid credentials.\n";
+    }
+        }
+        else if (option == 2) {  // Register
             if (auth.registerUser(username, password)) {
-                currentUser = std::make_shared<User>(username, password);
-                std::cout << "Registration successful.\n";
+                // Cargar el usuario recién creado con sus datos iniciales
+                currentUser = auth.loadUserData(username, password);
+                if (currentUser) {
+                    std::cout << "Registration successful. Welcome " << username << "!\n";
+                }
             } else {
                 std::cout << "Username already exists.\n";
             }

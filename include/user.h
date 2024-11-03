@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 #include "movie.h"
+#include "movie_database.h"
+
 
 class User {
 private:
@@ -11,6 +13,8 @@ private:
     std::string password;
     std::vector<std::shared_ptr<Movie>> watchLater;
     std::vector<std::shared_ptr<Movie>> likedMovies;
+    std::vector<std::string> searchHistory; // Nuevo: historial de búsquedas
+
 
 public:
     User(const std::string& user, const std::string& pass);
@@ -24,4 +28,10 @@ public:
     std::vector<std::shared_ptr<Movie>> getLikedMovies() const;
     std::string getUsername() const;
     bool verifyPassword(const std::string& pass) const;
+
+    // Nuevos métodos
+    void addSearchQuery(const std::string& query); // Nuevo
+    const std::vector<std::string>& getSearchHistory() const; // Nuevo
+    std::string serialize() const; // Nuevo
+    static User deserialize(const std::string& data, const std::shared_ptr<MovieDatabase>& db); // Nuevo
 };
