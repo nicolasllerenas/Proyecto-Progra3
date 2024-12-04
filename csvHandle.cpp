@@ -1,6 +1,6 @@
 #include "csvHandle.h"
 
-//El tema con el csv original es que está recontra feo xd, esta función lo arregla
+//El csv original es difícil de leer, esta función lo arregla
 //Lo que hace es asegurar que todas las líneas empiecen por el código tt102312
 void processCSV(const std::string& inputFile, const std::string& outputFile) {
     std::ifstream inFile(inputFile);
@@ -64,9 +64,9 @@ std::vector<MovieData> readCSV(const std::string& filePath) {
         std::string cell;
 
         // Función para manejar las citas dentro de las comas
-        // la vaina es que a la sinopsis está escrita "así de esta manera"
+        // la sinopsis está escrita "así de esta manera"
         // para que no se lean las comas dentro. Sin embargo hay un problema porque
-        // a veces en el texto citan diálogo ""así"". Esto lo maneja
+        // a veces en el texto citan diálogo ""así"". Esto lo maneja.
         // también funciona con los tags que están "así, pe, mano, con, comas"
         auto readQuotedField = [](std::istringstream& stream) {
             std::string field;
