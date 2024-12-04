@@ -107,7 +107,10 @@ std::vector<MovieData> readCSV(const std::string& filePath) {
 
 // función para imprimir
 void printMovies(const std::vector<MovieData>& movies) {
+    int index = 1;
     for (const auto& movie : movies) {
+        std::cout << index<<".\n";
+        index++;
         std::cout << movie;
         for (int i = 0; i < 30; i++)
         {
