@@ -37,7 +37,7 @@ TreeNode* MovieSearchTree::insertRec(TreeNode* node, const MovieData& movie) {
     return node;
 }
 
-// Buscar plículas en título o sinopsis (sin imporar mayúsculas)
+// Buscar plículas en título o sinopsis (sin importar mayúsculas)
 void MovieSearchTree::searchRec(TreeNode* node, const std::string& term, std::vector<MovieData>& result) {
     if (node == nullptr) {
         return;

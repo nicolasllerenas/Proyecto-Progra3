@@ -38,7 +38,7 @@ void processCSV(const std::string& inputFile, const std::string& outputFile) {
 
     inFile.close();
     outFile.close();
-    std::cout << "Processing complete. Output written to " << outputFile << std::endl;
+    //std::cout << "Processing complete. Output written to " << outputFile << std::endl;
 }
 
 //leer el csv
@@ -55,7 +55,7 @@ std::vector<MovieData> readCSV(const std::string& filePath) {
 
     // Saltarse el header imdb_id, title, plot_synopsis, etc
     if (std::getline(file, line)) {
-        std::cout << "Header: " << line << std::endl; // Opcional: imprimir el header. Está para debugging nomás
+        //std::cout << "Header: " << line << std::endl; // Opcional: imprimir el header. Está para debugging nomás
     }
     
     while (std::getline(file, line)) {

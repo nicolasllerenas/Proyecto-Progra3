@@ -29,7 +29,7 @@ void DatabaseManager::displayMenu() {
     std::cout << "3. Ver películas con a las que diste Me Gusta\n";
     std::cout << "4. Ver lista de Ver Más Tarde\n";
     std::cout << "5. Salir\n";
-    std::cout << "Enter your choice: ";
+    std::cout << "Ingrese una opción: ";
 }
 
 void DatabaseManager::handleMenuChoice(int choice) {
